@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .preview-image {
+            max-height: 400px;
+            object-fit: contain;
+        }
+        .face-box {
+            position: absolute;
+            border: 3px solid;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 14px;
+            padding: 2px 6px;
+        }
+        .face-box.recognized {
+            border-color: #10b981;
+            color: #10b981;
+        }
+        .face-box.unknown {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 via-white to-blue-50 min-h-screen">
+    
+    <!-- Header -->
+    <header class="gradient-bg text-white py-6 shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i data-lucide="scan-face" class="w-10 h-10"></i>
+                    <h1 class="text-3xl font-bold">Face Recognition System</h1>
+                </div>
+                <button onclick="viewDatabase()" class="bg-white text-purple-600 px-4 py-2 rounded-lg font-semibold hover:bg-purple-50 transition flex items-center space-x-2">
+                    <i data-lucide="database" class="w-5 h-5"></i>
+                    <span id="dbCount">Database</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        
+        <!-- Tab Navigation -->
+        <div class="flex justify-center mb-8 space-x-4 flex-wrap gap-2">
+            <button onclick="showTab('detect')" id="tab-detect" class="px-6 py-3 rounded-lg font-semibold bg-white shadow-md hover:shadow-lg transition">
+                <i data-lucide="search" class="w-5 h-5 inline mr-2"></i>
+                Phát hiện
+            </button>
+            <button onclick="showTab('register')" id="tab-register" class="px-6 py-3 rounded-lg font-semibold bg-white shadow-md hover:shadow-lg transition">
+                <i data-lucide="user-plus" class="w-5 h-5 inline mr-2"></i>
+                Đăng ký
+            </button>
+            <button onclick="showTab('recognize')" id="tab-recognize" class="px-6 py-3 rounded-lg font-semibold bg-white shadow-md hover:shadow-lg transition">
+                <i data-lucide="scan" class="w-5 h-5 inline mr-2"></i>
+                Nhận dạng
+            </button>
+            <!-- Chỉ hiển thị tab webcam khi chạy local -->
+            <button onclick="showTab('webcam')" id="tab-webcam" class="px-6 py-3 rounded-lg font-semibold bg-white shadow-md hover:shadow-lg transition webcam-only">
+                <i data-lucide="video" class="w-5 h-5 inline mr-2"></i>
+                Webcam
+            </button>
+        </div>
+
+        <!-- Detect Tab -->
+        <div id="detect-tab" class="tab-content">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-xl p-8 card-hover">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i data-lucide="search" class="w-6 h-6 mr-3 text-purple-600"></i>
+                        Phát hiện khuôn mặt trong ảnh
+                    </h2>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-3">Chọn ảnh:</label>
+                        <input type="file" id="detect-file" accept="image/*" class="w-full px-4 py-3 border-2 border-dashed border-purple-300 rounded-lg focus:outline-none focus:border-purple-500 transition">
+                    </div>
+                    
+                    <button onclick="detectFaces()" class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition flex items-center justify-center space-x-2">
+                        <i data-lucide="scan" class="w-5 h-5"></i>
+                        <span>Phát hiện khuôn mặt</span>
+                    </button>
+                    
+                    <div id="detect-preview" class="mt-6 hidden">
+                        <img id="detect-preview-img" class="w-full preview-image rounded-lg shadow-md">
+                    </div>
+                    
+                    <div id="detect-result" class="mt-6"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Register Tab -->
+        <div id="register-tab" class="tab-content hidden">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-xl p-8 card-hover">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i data-lucide="user-plus" class="w-6 h-6 mr-3 text-purple-600"></i>
+                        Đăng ký khuôn mặt mới
+                    </h2>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-3">Tên người:</label>
+                        <input type="text" id="register-name" placeholder="Nhập tên..." class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-3">Ảnh khuôn mặt (chỉ 1 người):</label>
+                        <input type="file" id="register-file" accept="image/*" class="w-full px-4 py-3 border-2 border-dashed border-purple-300 rounded-lg focus:outline-none focus:border-purple-500 transition">
+                    </div>
+                    
+                    <button onclick="registerFace()" class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition flex items-center justify-center space-x-2">
+                        <i data-lucide="save" class="w-5 h-5"></i>
+                        <span>Đăng ký</span>
+                    </button>
+                    
+                    <div id="register-preview" class="mt-6 hidden">
+                        <img id="register-preview-img" class="w-full preview-image rounded-lg shadow-md">
+                    </div>
+                    
+                    <div id="register-result" class="mt-6"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recognize Tab -->
+        <div id="recognize-tab" class="tab-content hidden">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-xl p-8 card-hover">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i data-lucide="scan" class="w-6 h-6 mr-3 text-purple-600"></i>
+                        Nhận dạng khuôn mặt
+                    </h2>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-3">Chọn ảnh:</label>
+                        <input type="file" id="recognize-file" accept="image/*" class="w-full px-4 py-3 border-2 border-dashed border-purple-300 rounded-lg focus:outline-none focus:border-purple-500 transition">
+                    </div>
+                    
+                    <button onclick="recognizeFaces()" class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition flex items-center justify-center space-x-2">
+                        <i data-lucide="search-check" class="w-5 h-5"></i>
+                        <span>Nhận dạng</span>
+                    </button>
+                    
+                    <div id="recognize-preview" class="mt-6 hidden">
+                        <img id="recognize-preview-img" class="w-full preview-image rounded-lg shadow-md">
+                    </div>
+                    
+                    <div id="recognize-result" class="mt-6"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Webcam Tab -->
+        <div id="webcam-tab" class="tab-content hidden">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-xl p-8 card-hover">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                        <i data-lucide="video" class="w-6 h-6 mr-3 text-purple-600"></i>
+                        Nhận dạng khuôn mặt qua Webcam
+                    </h2>
+                    
+                    <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                        <p class="text-sm text-blue-800">
+                            <i data-lucide="info" class="w-4 h-4 inline mr-1"></i>
+                            <strong>Cách sử dụng:</strong> Bật camera → Điều chỉnh góc nhìn → Nhấn "Chụp & Nhận dạng"
+                        </p>
+                    </div>
+                    
+                    <div class="mb-6 flex justify-center gap-3">
+                        <button onclick="startWebcam()" id="start-webcam-btn" class="gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition inline-flex items-center space-x-2">
+                            <i data-lucide="video" class="w-5 h-5"></i>
+                            <span>Bật Camera</span>
+                        </button>
+                        <button onclick="captureAndRecognize()" id="capture-btn" class="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition hidden inline-flex items-center space-x-2">
+                            <i data-lucide="camera" class="w-5 h-5"></i>
+                            <span>Chụp & Nhận dạng</span>
+                        </button>
+                        <button onclick="stopWebcam()" id="stop-webcam-btn" class="bg-red-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-600 transition hidden inline-flex items-center space-x-2">
+                            <i data-lucide="video-off" class="w-5 h-5"></i>
+                            <span>Tắt Camera</span>
+                        </button>
+                    </div>
+                    
+                    <div class="relative bg-black rounded-lg overflow-hidden" style="display: none;" id="webcam-container">
+                        <video id="webcam-video" autoplay playsinline class="w-full" style="transform: scaleX(-1);"></video>
+                        <canvas id="webcam-canvas" class="hidden"></canvas>
+                    </div>
+                    
+                    <div id="captured-preview" class="mt-6 hidden">
+                        <h3 class="font-semibold text-gray-700 mb-3">Ảnh đã chụp:</h3>
+                        <div class="relative">
+                            <img id="captured-image" class="w-full preview-image rounded-lg shadow-md">
+                            <div id="face-boxes-container" class="absolute top-0 left-0 w-full h-full"></div>
+                        </div>
+                    </div>
+                    
+                    <div id="webcam-result" class="mt-6"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Database Modal -->
+    <div id="database-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div class="gradient-bg text-white p-6 rounded-t-2xl flex justify-between items-center">
+                <h3 class="text-2xl font-bold flex items-center">
+                    <i data-lucide="database" class="w-6 h-6 mr-3"></i>
+                    Database
+                </h3>
+                <button onclick="closeDatabase()" class="text-white hover:text-gray-200 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="database-content" class="p-6">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tự động phát hiện môi trường
+        const IS_LOCAL = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' || 
+                        window.location.hostname === '';
+        
+        // Cấu hình API URL tự động
+        const API_URL = IS_LOCAL 
+            ? 'http://localhost:8000'
+            : window.location.origin;
+        
+        // Tắt webcam trên production để tiết kiệm tài nguyên
+        const WEBCAM_ENABLED = IS_LOCAL;
+
+        // Webcam variables
+        let webcamStream = null;
+        let isWebcamActive = false;
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Tab switching
+        function showTab(tabName) {
+            // Stop webcam if switching away from webcam tab
+            if (isWebcamActive && tabName !== 'webcam') {
+                stopWebcam();
+            }
+            
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Remove active state from all buttons
+            document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('gradient-bg', 'text-white');
+                btn.classList.add('bg-white');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            
+            // Add active state to selected button
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.classList.remove('bg-white');
+            activeBtn.classList.add('gradient-bg', 'text-white');
+            
+            lucide.createIcons();
+        }
+
+        // Preview image
+        function previewImage(fileInputId, previewDivId, previewImgId) {
+            const file = document.getElementById(fileInputId).files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById(previewDivId).classList.remove('hidden');
+                    document.getElementById(previewImgId).src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Add event listeners for image preview
+        document.getElementById('detect-file').addEventListener('change', () => {
+            previewImage('detect-file', 'detect-preview', 'detect-preview-img');
+        });
+        document.getElementById('register-file').addEventListener('change', () => {
+            previewImage('register-file', 'register-preview', 'register-preview-img');
+        });
+        document.getElementById('recognize-file').addEventListener('change', () => {
+            previewImage('recognize-file', 'recognize-preview', 'recognize-preview-img');
+        });
+
+        // Detect faces
+        async function detectFaces() {
+            const fileInput = document.getElementById('detect-file');
+            const resultDiv = document.getElementById('detect-result');
+            
+            if (!fileInput.files[0]) {
+                showError(resultDiv, 'Vui lòng chọn ảnh!');
+                return;
+            }
+            
+            showLoading(resultDiv, 'Đang phát hiện khuôn mặt...');
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch(`${API_URL}/detect`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(resultDiv, `
+                        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                            <p class="font-bold text-green-800">✓ Tìm thấy ${data.count} khuôn mặt!</p>
+                            ${data.faces.map((face, i) => `
+                                <div class="mt-2 text-sm text-green-700">
+                                    Face ${i+1}: Độ tin cậy ${(face.confidence * 100).toFixed(1)}%
+                                </div>
+                            `).join('')}
+                        </div>
+                    `);
+                } else {
+                    showError(resultDiv, data.message);
+                }
+            } catch (error) {
+                showError(resultDiv, 'Lỗi kết nối API: ' + error.message);
+            }
+        }
+
+        // Register face
+        async function registerFace() {
+            const nameInput = document.getElementById('register-name');
+            const fileInput = document.getElementById('register-file');
+            const resultDiv = document.getElementById('register-result');
+            
+            if (!nameInput.value.trim()) {
+                showError(resultDiv, 'Vui lòng nhập tên!');
+                return;
+            }
+            
+            if (!fileInput.files[0]) {
+                showError(resultDiv, 'Vui lòng chọn ảnh!');
+                return;
+            }
+            
+            showLoading(resultDiv, 'Đang đăng ký...');
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch(`${API_URL}/register?name=${encodeURIComponent(nameInput.value)}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(resultDiv, `
+                        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+                            <p class="font-bold text-green-800">✓ ${data.message}</p>
+                            <p class="text-sm text-green-700 mt-1">Tổng số người trong database: ${data.total_registered}</p>
+                        </div>
+                    `);
+                    updateDatabaseCount();
+                    nameInput.value = '';
+                    fileInput.value = '';
+                    document.getElementById('register-preview').classList.add('hidden');
+                } else {
+                    showError(resultDiv, data.message);
+                }
+            } catch (error) {
+                showError(resultDiv, 'Lỗi kết nối API: ' + error.message);
+            }
+        }
+
+        // Recognize faces
+        async function recognizeFaces() {
+            const fileInput = document.getElementById('recognize-file');
+            const resultDiv = document.getElementById('recognize-result');
+            
+            if (!fileInput.files[0]) {
+                showError(resultDiv, 'Vui lòng chọn ảnh!');
+                return;
+            }
+            
+            showLoading(resultDiv, 'Đang nhận dạng...');
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch(`${API_URL}/recognize`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(resultDiv, `
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                            <p class="font-bold text-blue-800">Kết quả nhận dạng:</p>
+                            ${data.results.map((result, i) => `
+                                <div class="mt-3 p-3 bg-white rounded shadow-sm">
+                                    <p class="font-semibold ${result.name === 'Unknown' ? 'text-red-600' : 'text-green-600'}">
+                                        ${result.name === 'Unknown' ? '❌ Không nhận dạng được' : '✓ ' + result.name}
+                                    </p>
+                                    <p class="text-sm text-gray-600">Độ tương đồng: ${(result.similarity * 100).toFixed(1)}%</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `);
+                } else {
+                    showError(resultDiv, data.message);
+                }
+            } catch (error) {
+                showError(resultDiv, 'Lỗi kết nối API: ' + error.message);
+            }
+        }
+
+        // Webcam functions
+        async function startWebcam() {
+            if (!WEBCAM_ENABLED) {
+                alert('⚠️ Tính năng Webcam chỉ khả dụng khi chạy local.\n\nĐể tiết kiệm tài nguyên server, vui lòng sử dụng tính năng upload ảnh.');
+                return;
+            }
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    } 
+                });
+                
+                webcamStream = stream;
+                isWebcamActive = true;
+                
+                const video = document.getElementById('webcam-video');
+                video.srcObject = stream;
+                
+                document.getElementById('webcam-container').style.display = 'block';
+                document.getElementById('start-webcam-btn').classList.add('hidden');
+                document.getElementById('capture-btn').classList.remove('hidden');
+                document.getElementById('stop-webcam-btn').classList.remove('hidden');
+                document.getElementById('captured-preview').classList.add('hidden');
+                document.getElementById('webcam-result').innerHTML = '';
+                
+                video.onloadedmetadata = () => {
+                    const canvas = document.getElementById('webcam-canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                };
+                
+                lucide.createIcons();
+                
+            } catch (error) {
+                alert('Không thể truy cập camera: ' + error.message);
+            }
+        }
+
+        function stopWebcam() {
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+            
+            isWebcamActive = false;
+            
+            document.getElementById('webcam-container').style.display = 'none';
+            document.getElementById('start-webcam-btn').classList.remove('hidden');
+            document.getElementById('capture-btn').classList.add('hidden');
+            document.getElementById('stop-webcam-btn').classList.add('hidden');
+            // Reset mirror on hide
+            const previewWrapper = document.querySelector('#captured-preview .relative');
+            if (previewWrapper) previewWrapper.style.transform = '';
+            document.getElementById('captured-preview').classList.add('hidden');
+            document.getElementById('webcam-result').innerHTML = '';
+        }
+
+        async function captureAndRecognize() {
+            const video = document.getElementById('webcam-video');
+            const canvas = document.getElementById('webcam-canvas');
+            const ctx = canvas.getContext('2d');
+            const resultDiv = document.getElementById('webcam-result');
+            
+            // Capture frame and MIRROR image on canvas so server and client see same orientation
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1); // Mirror horizontally on canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
+            
+            // Show captured image (no CSS mirror)
+            const capturedImage = canvas.toDataURL('image/jpeg', 0.95);
+            document.getElementById('captured-image').src = capturedImage;
+            const previewWrapper = document.querySelector('#captured-preview .relative');
+            if (previewWrapper) previewWrapper.style.transform = ''; // ensure no CSS flip
+            document.getElementById('captured-preview').classList.remove('hidden');
+            
+            // Show loading
+            showLoading(resultDiv, 'Đang nhận dạng khuôn mặt...');
+            
+            // Convert to base64 and send
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+            
+            try {
+                const response = await fetch(`${API_URL}/recognize-frame`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ image: imageData })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.count > 0) {
+                    // Use server-processed image size (important when server resizes)
+                    const serverWidth = data.image_size?.width || canvas.width;
+                    const serverHeight = data.image_size?.height || canvas.height;
+
+                    // Use the displayed image size (preview) to compute scale factors
+                    const imgEl = document.getElementById('captured-image');
+                    const displayWidth = imgEl.clientWidth || canvas.width;
+                    const displayHeight = imgEl.clientHeight || canvas.height;
+
+                    const scaleX = displayWidth / serverWidth;
+                    const scaleY = displayHeight / serverHeight;
+
+                    // Ensure overlay container matches displayed image size
+                    const boxesContainer = document.getElementById('face-boxes-container');
+                    boxesContainer.style.width = `${displayWidth}px`;
+                    boxesContainer.style.height = `${displayHeight}px`;
+
+                    drawFaceBoxesOnCaptured(data.results, displayWidth, displayHeight, scaleX, scaleY);
+
+                    // Show results
+                    showSuccess(resultDiv, `
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                            <p class="font-bold text-blue-800">Kết quả nhận dạng (${data.count} khuôn mặt):</p>
+                            ${data.results.map((result, i) => `
+                                <div class="mt-3 p-3 bg-white rounded shadow-sm">
+                                    <p class="font-semibold ${result.name === 'Unknown' ? 'text-red-600' : 'text-green-600'}">
+                                        ${result.name === 'Unknown' ? '❌ Không nhận dạng được' : '✓ ' + result.name}
+                                    </p>
+                                    <p class="text-sm text-gray-600">Độ tương đồng: ${(result.similarity * 100).toFixed(1)}%</p>
+                                    <p class="text-sm text-gray-600">Độ tin cậy: ${(result.confidence * 100).toFixed(1)}%</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `);
+                } else if (data.success && data.count === 0) {
+                    showError(resultDiv, 'Không tìm thấy khuôn mặt nào trong ảnh');
+                    document.getElementById('face-boxes-container').innerHTML = '';
+                    // Reset preview mirror if no faces
+                    const previewWrapper = document.querySelector('#captured-preview .relative');
+                    if (previewWrapper) previewWrapper.style.transform = '';
+                } else {
+                    showError(resultDiv, data.message || 'Có lỗi xảy ra');
+                }
+            } catch (error) {
+                showError(resultDiv, 'Lỗi kết nối API: ' + error.message);
+            }
+        }
+
+        function drawFaceBoxesOnCaptured(results, canvasWidth, canvasHeight, scaleX = 1, scaleY = 1) {
+            const container = document.getElementById('face-boxes-container');
+            container.innerHTML = '';
+            
+            results.forEach(result => {
+                const [x1, y1, x2, y2] = result.bbox;
+
+                // Server đã xử lý ảnh mirror (do canvas đã mirror trước khi gửi)
+                // Bbox từ server đã khớp với ảnh preview, chỉ cần scale
+                const finalX1 = x1 * scaleX;
+                const finalY1 = y1 * scaleY;
+                const finalWidth = (x2 - x1) * scaleX;
+                const finalHeight = (y2 - y1) * scaleY;
+
+                const box = document.createElement('div');
+                box.className = `face-box ${result.name === 'Unknown' ? 'unknown' : 'recognized'}`;
+                box.style.left = `${finalX1}px`;
+                box.style.top = `${finalY1}px`;
+                box.style.width = `${finalWidth}px`;
+                box.style.height = `${finalHeight}px`;
+
+                const label = document.createElement('div');
+                label.style.position = 'absolute';
+                label.style.top = '-28px';
+                label.style.left = '0';
+                label.style.backgroundColor = result.name === 'Unknown' ? '#ef4444' : '#10b981';
+                label.style.color = 'white';
+                label.style.padding = '4px 8px';
+                label.style.borderRadius = '4px';
+                label.style.fontSize = '13px';
+                label.style.fontWeight = 'bold';
+                label.style.whiteSpace = 'nowrap';
+                label.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                label.textContent = `${result.name} (${(result.similarity * 100).toFixed(0)}%)`;
+
+                box.appendChild(label);
+                container.appendChild(box);
+            });
+        }
+
+        // View database
+        async function viewDatabase() {
+            const modal = document.getElementById('database-modal');
+            const content = document.getElementById('database-content');
+            
+            content.innerHTML = '<div class="text-center py-8"><div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent"></div></div>';
+            modal.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`${API_URL}/database`);
+                const data = await response.json();
+                
+                if (data.success && data.count > 0) {
+                    content.innerHTML = `
+                        <p class="text-gray-600 mb-4">Tổng số: ${data.count} người</p>
+                        <div class="space-y-2">
+                            ${data.names.map(name => `
+                                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                                    <span class="font-semibold text-gray-800">${name}</span>
+                                    <button onclick="deleteFromDatabase('${name}')" class="text-red-500 hover:text-red-700 transition">
+                                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = '<p class="text-center text-gray-500 py-8">Database trống</p>';
+                }
+                lucide.createIcons();
+            } catch (error) {
+                content.innerHTML = `<p class="text-center text-red-500 py-8">Lỗi: ${error.message}</p>`;
+            }
+        }
+
+        function closeDatabase() {
+            document.getElementById('database-modal').classList.add('hidden');
+        }
+
+        async function deleteFromDatabase(name) {
+            if (!confirm(`Xóa "${name}" khỏi database?`)) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/database/${encodeURIComponent(name)}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    viewDatabase();
+                    updateDatabaseCount();
+                }
+            } catch (error) {
+                alert('Lỗi: ' + error.message);
+            }
+        }
+
+        async function updateDatabaseCount() {
+            try {
+                const response = await fetch(`${API_URL}/database`);
+                const data = await response.json();
+                document.getElementById('dbCount').textContent = `Database (${data.count})`;
+            } catch (error) {
+                console.error('Error updating count:', error);
+            }
+        }
+
+        // Helper functions
+        function showLoading(div, message) {
+            div.innerHTML = `
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded flex items-center">
+                    <div class="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent mr-3"></div>
+                    <p class="text-blue-800">${message}</p>
+                </div>
+            `;
+        }
+
+        function showSuccess(div, html) {
+            div.innerHTML = html;
+        }
+
+        function showError(div, message) {
+            div.innerHTML = `
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                    <p class="font-bold text-red-800">✗ ${message}</p>
+                </div>
+            `;
+        }
+
+        // Initialize
+        updateDatabaseCount();
+        showTab('detect');
+        
+        // Ẩn tính năng webcam nếu không phải local
+        if (!WEBCAM_ENABLED) {
+            document.querySelectorAll('.webcam-only').forEach(el => {
+                el.style.display = 'none';
+            });
+            console.log('🌐 Running on production - Webcam features disabled to save resources');
+        } else {
+            console.log('💻 Running locally - All features enabled');
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (isWebcamActive) {
+                stopWebcam();
+            }
+        });
+    </script>
+
+</body>
+</html>
