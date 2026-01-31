@@ -25,7 +25,6 @@ RUN find /usr/local/lib/python3.10/site-packages/onnxruntime/capi/ -name "onnxru
     -exec patchelf --clear-execstack {} \;
 
 COPY . .
-COPY frontend/index.html ./
 
 # Create data directory for persistent storage (can be mounted by docker-compose)
 RUN mkdir -p /app/data && chmod 755 /app/data
@@ -34,4 +33,4 @@ RUN mkdir -p /root/.insightface
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
