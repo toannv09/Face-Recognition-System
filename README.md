@@ -7,7 +7,7 @@
 
 **Live demo:** 
 
-🔗 Trải nghiệm trực tiếp trên HuggingFace Spaces: https://huggingface.co/spaces/Lippovn04/Face-Recognition-System
+Trải nghiệm trực tiếp trên HuggingFace Spaces: https://huggingface.co/spaces/Lippovn04/Face-Recognition-System
 
 > Lưu ý: bản demo chạy trên tài nguyên CPU chia sẻ (HuggingFace Spaces) và **không dành cho inference thời gian thực**.
 
