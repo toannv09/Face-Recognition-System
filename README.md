@@ -5,7 +5,8 @@
 - **Backend (API)**: REST API viết bằng FastAPI để upload ảnh, phát hiện, đăng ký và nhận dạng khuôn mặt.
 - **Local (Realtime OpenCV)**: Script Python dùng OpenCV để hiển thị luồng webcam và thực hiện nhận dạng theo thời gian thực, điều khiển bằng bàn phím.
 
-**Live demo:** 🔗 Trải nghiệm trực tiếp trên HuggingFace Spaces: https://huggingface.co/spaces/Lippovn04/Face-Recognition-System
+**Live demo:** 
+🔗 Trải nghiệm trực tiếp trên HuggingFace Spaces: https://huggingface.co/spaces/Lippovn04/Face-Recognition-System
 
 > Lưu ý: bản demo chạy trên tài nguyên CPU chia sẻ (HuggingFace Spaces) và **không dành cho inference thời gian thực**.
 
